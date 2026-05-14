@@ -1,19 +1,30 @@
 
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 public class Servidor extends Thread {
 
     static final int Puerto = 2000;
 
     private List<Producto> listaProductos = new ArrayList<>();
-    Socket skCliente = null;
+    private Socket skCliente = null;
 
+    // Constructor vacio
+    public Servidor() {
+    }
+
+    /**
+     * Constructor con parametros
+     *
+     * @param skCliente Socket con el que se conecta el cliente
+     * @param listaProductos Lista de productos que hay en el almacén
+     */
     public Servidor(Socket skCliente, List<Producto> listaProductos) {
-        this.listaProductos = listaProductos;
         this.skCliente = skCliente;
+        this.listaProductos = listaProductos;
     }
 
     /**
@@ -21,12 +32,11 @@ public class Servidor extends Thread {
      * producto por cada línea del archivo
      */
     public void cargaProductos() {
-        System.out.println("\nCargando stock de productos...");
         // Lectura del archivo
         try (BufferedReader br = new BufferedReader(new FileReader("config_stock.properties"))) {
             String linea;
             while ((linea = br.readLine()) != null) {
-                String[] datos = linea.split(";");
+                String[] datos = linea.split("=");
                 // Creacion de producto con los datos de la línea
                 Producto aux = new Producto(datos[0], Integer.parseInt(datos[1]));
                 this.listaProductos.add(aux);
@@ -34,7 +44,44 @@ public class Servidor extends Thread {
         } catch (IOException e) {
             System.out.println(e.getMessage());
         }
-        System.out.println("Productos cargados: " + this.listaProductos.size());
+    }
+
+    /**
+     * Registra en el archivo de registro los detalles de cada pedido realizado.
+     *
+     * @param nombre Nombre del producto solicitado
+     * @param cantidad Cantidad solicitada
+     * @param resultado Resultado del pedido (si ha sido aceptado o no)
+     */
+    public void logPedido(String nombre, int cantidad, String resultado) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter("pedidos.log", true))) {
+            // Obtengo fecha actual formateada
+            LocalDateTime fecha = LocalDateTime.now();
+            DateTimeFormatter formato = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            String fechaFormat = fecha.format(formato);
+
+            // Obtengo mensaje a escribir
+            String registro = "[" + fechaFormat + "] PEDIDO - Almacén: "
+                    + this.skCliente.getRemoteSocketAddress()
+                    + " - Producto: " + nombre + " - Cantidad: " + cantidad + " - " + resultado;
+
+            // Escritura de mensaje
+            bw.newLine();
+            bw.write(registro);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    /**
+     * Método auxiliar para borrar los contenidos del archivo .log
+     */
+    public void resetLog() {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter("pedidos.log"))) {
+            bw.write("");
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
     }
 
     /**
@@ -62,12 +109,33 @@ public class Servidor extends Thread {
         return result;
     }
 
+    /**
+     * Comprueba si hay stock suficiente para atender el pedido
+     *
+     * @param producto Producto solicitado
+     * @param cantidad Cantidad solicitada
+     * @return Devuelve true si hay más stock que cantidad se ha solicitado y
+     * false en caso contrario
+     */
     public boolean hayStock(Producto producto, int cantidad) {
         return cantidad <= producto.getStock();
     }
 
+    /**
+     * Procesamiento del pedido. Primero se comprueba si se dispone del producto
+     * solicitado. Si el producto se encuentra en el almacén, se comprueba si
+     * hay suficiente stock para atender la petición. Por último, se devuelve al
+     * cliente un mensaje con el resultado del pedido.
+     *
+     * @param nombreProducto Producto pedido
+     * @param cantidad Cantidad solicitada
+     * @return Devuelve mensaje de error si no hay suficiente stock del producto
+     * o se pide un producto que no existe. En caso de que se pueda atender la
+     * peticion, devuelve los detalles solicitados por el cliente.
+     */
     public String procesarPedido(String nombreProducto, int cantidad) {
         String result;
+        String resultadoLog;
         Producto aux = encontrarProducto(nombreProducto);
         // Buscar producto
         if (aux != null) {
@@ -75,12 +143,21 @@ public class Servidor extends Thread {
                 // Actualizacion del stock
                 aux.setStock(aux.getStock() - cantidad);
                 result = "Pedido aceptado: " + nombreProducto + " - Cantidad: " + cantidad;
+                resultadoLog = "ACEPTADO";
+                System.out.println("Pedido procesado: " + nombreProducto + ", cantidad: " + cantidad + " - ACEPTADO");
             } else {
-                result = "Pedido rechazadi: Stock insuficiente.";
+                result = "Pedido rechazado: Stock insuficiente.";
+                resultadoLog = "RECHAZADO (Stock insuficiente)";
+                System.out.println("Pedido procesado: " + nombreProducto + ", cantidad: " + cantidad + " - RECHAZADO (Stock insuficiente)");
             }
         } else {
-            result = "ERROR:::No hay ningún producto con el nombre solicitado: " + nombreProducto + ".";
+            result = "Pedido rechazado: No hay ningún producto con el nombre solicitado.";
+            resultadoLog = "RECHAZADO (Producto no encontrado)";
+            System.out.println("Pedido procesado: " + nombreProducto + ", cantidad: " + cantidad + " - RECHAZADO (Producto no encontrado)");
         }
+
+        // Escritura de resultado en archivo .log
+        logPedido(nombreProducto, cantidad, resultadoLog);
         return result;
     }
 
@@ -97,16 +174,12 @@ public class Servidor extends Thread {
             DataInputStream flujo_entrada = new DataInputStream(entrada);
 
             // Entra nombre (parametro 1)
-            String nombreProducto = flujo_entrada.readUTF();
-            if (encontrarProducto(nombreProducto) != null) {
-                // Entrada del cliente. ¿array? Necesito nombre + cantidad
-                // Entra cantidad (parametro 2)
-                flujo_salida.writeUTF(procesarPedido(nombreProducto, Integer.parseInt(flujo_entrada.readUTF())));
-            } else {
-                System.out.println("ERROR:::PRODUCTO NO ENCONTRADO");
-                flujo_salida.writeUTF("ERROR:::PRODUCTO NO ENCONTRADO");
-            }
-            System.out.println("PEDIDO PROCESADO");
+            String nombreProducto = "producto" + flujo_entrada.readUTF();
+            // Entra cantidad (parametro 2)
+            int cantidadProducto = Integer.parseInt(flujo_entrada.readUTF());
+
+            // Respuesta al cliente. 
+            flujo_salida.writeUTF(procesarPedido(nombreProducto, cantidadProducto));
         } catch (IOException e) {
             System.out.println(e.getMessage());
         }
@@ -114,21 +187,29 @@ public class Servidor extends Thread {
 
     public void main(String[] args) {
 
+        // Carga de datos mediante archivo con stock inicial
+        cargaProductos();
+
+        // Limpieza de datos del archivo .log en caso de que ya tuviera datos de una ejecución previa
+        resetLog();
+
         // Apertura de conexion del servidor
         try (ServerSocket skServidor = new ServerSocket(Puerto)) {
-            // Carga de datos mediante archivo con stock inicial
-            cargaProductos();
 
-            // El servidor espera a que algún cliente se conecte
-            Socket skCliente = skServidor.accept();
+            System.out.println("Servidor de pedidos iniciado en el puerto " + Puerto);
+            while (true) {
 
-            // Lanza thread para el cliente conectado
-            new Servidor(skCliente, this.listaProductos).start();
+                // El servidor espera a que algún cliente se conecte
+                Socket skCliente = skServidor.accept();
+                // Lanza thread para el cliente conectado
+                new Servidor(skCliente, this.listaProductos).start();
 
-            // Cierre de conexion
+                // No hay cierre de conexión, se simula que el servidor está siempre
+                //  a la espera de conexiones por parte de los clientes.
+            }
         } catch (Exception e) {
             System.out.println(e.getMessage());
+
         }
-        System.out.println("Servidor finalizado.");
     }
 }

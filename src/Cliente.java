@@ -1,10 +1,6 @@
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
 
 public class Cliente {
 
@@ -15,10 +11,7 @@ public class Cliente {
 
         // Conexión al servidor, el socket se cierra solo al terminar (try-with-resources)
         try (Socket skCliente = new Socket(Host, Puerto)) {
-            // Apertura de conexión
-
-            System.out.println("Conectando al servidor en: " + InetAddress.getByName("localhost") + " \n");
-            System.out.println("Conexión establecida\n");
+            System.out.println("Conectado al servidor de pedidos.");
 
             // Defino el flujo de entrada de datos desde el servidor
             InputStream entrada = skCliente.getInputStream();
@@ -29,18 +22,22 @@ public class Cliente {
             DataOutputStream flujo_salida = new DataOutputStream(salida);
 
             // Generación aleatoria de pedido. 
-            // Envío de pedido
-            // Producto
-            flujo_salida.writeUTF("" + (int) (Math.random() * 10));
-            // Cantidad
-            flujo_salida.writeUTF("" + (int) (Math.random() * 100));
+            // Producto aleatorio
+            String nombre = "" + (int) (Math.random() * 7);
+            // Envío de nombre
+            flujo_salida.writeUTF(nombre);
+            // Cantidad aleatoria
+            String cantidad = "" + (int) (Math.random() * 300);
+            // Envío de cantida
+            flujo_salida.writeUTF(cantidad);
+
+            System.out.println("Ingrese su pedido: producto" + nombre + "," + cantidad);
             // Recepción de respuesta
             // Muestra respuesta en consola
-            System.out.println(flujo_entrada.readUTF());
+            System.out.println(flujo_entrada.readUTF() + "\n");
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
-        System.out.println("Cliente desconectado.");
     }
 
     public static void main(String[] args) {

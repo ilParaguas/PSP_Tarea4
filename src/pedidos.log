@@ -1,0 +1,11 @@
+
+[2026-05-15 01:04:40] PEDIDO - Almacén: /127.0.0.1:54012 - Producto: producto2 - Cantidad: 124 - RECHAZADO (Stock insuficiente)
+[2026-05-15 01:04:40] PEDIDO - Almacén: /127.0.0.1:54013 - Producto: producto4 - Cantidad: 196 - RECHAZADO (Stock insuficiente)
+[2026-05-15 01:04:40] PEDIDO - Almacén: /127.0.0.1:54014 - Producto: producto0 - Cantidad: 169 - RECHAZADO (Producto no encontrado)
+[2026-05-15 01:04:40] PEDIDO - Almacén: /127.0.0.1:54015 - Producto: producto3 - Cantidad: 262 - RECHAZADO (Stock insuficiente)
+[2026-05-15 01:04:40] PEDIDO - Almacén: /127.0.0.1:54016 - Producto: producto4 - Cantidad: 276 - RECHAZADO (Stock insuficiente)
+[2026-05-15 01:04:40] PEDIDO - Almacén: /127.0.0.1:54017 - Producto: producto4 - Cantidad: 250 - RECHAZADO (Stock insuficiente)
+[2026-05-15 01:04:40] PEDIDO - Almacén: /127.0.0.1:54018 - Producto: producto1 - Cantidad: 265 - RECHAZADO (Stock insuficiente)
+[2026-05-15 01:04:40] PEDIDO - Almacén: /127.0.0.1:54019 - Producto: producto5 - Cantidad: 232 - ACEPTADO
+[2026-05-15 01:04:40] PEDIDO - Almacén: /127.0.0.1:54020 - Producto: producto2 - Cantidad: 185 - RECHAZADO (Stock insuficiente)
+[2026-05-15 01:04:40] PEDIDO - Almacén: /127.0.0.1:54021 - Producto: producto0 - Cantidad: 282 - RECHAZADO (Producto no encontrado)
